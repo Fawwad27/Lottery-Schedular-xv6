@@ -107,3 +107,21 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// CODE MODIFICATION 9
+uint64
+sys_settickets(void)
+{
+  int n;
+  argint(0, &n);
+
+  if(n < 1) // ensure at least 1 ticket
+    return -1;
+
+  struct proc *p = myproc();
+  acquire(&p->lock);
+  p->tickets = n;
+  release(&p->lock);
+
+  return 0;
+}

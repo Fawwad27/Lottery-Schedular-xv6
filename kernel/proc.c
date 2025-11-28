@@ -6,6 +6,17 @@
 #include "proc.h"
 #include "defs.h"
 
+// CODE MODIFICATION 1: Simple Linear Congruential Generator
+unsigned long rand_state = 1;
+
+int
+random(void)
+{
+  rand_state = rand_state * 1664525 + 1013904223;
+  // Use bitwise AND to ensure the result is always positive (0 to 32767)
+  return (rand_state >> 16) & 0x7FFF;
+}
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -124,6 +135,9 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+
+  // CODE MODIFICATION 3: Default ticket count
+  p->tickets = 10;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -424,6 +438,68 @@ kwait(uint64 addr)
 void
 scheduler(void)
 {
+  //CODE MODIFICATION 10
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+
+  for(;;) {
+    // Enable interrupts on this processor
+    intr_on();
+
+    int total_tickets = 0;
+    long winner_ticket = 0;
+    long current_ticket_count = 0;
+
+    // PASS 1: Calculate total tickets of all RUNNABLE processes
+    for(p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        total_tickets += p->tickets;
+      }
+      release(&p->lock);
+    }
+
+    // If no one wants to run, wait for interrupt
+    if(total_tickets == 0) {
+      intr_off();
+      asm volatile("wfi");
+      continue;
+    }
+
+    // PASS 2: Pick the winner
+    winner_ticket = random() % total_tickets;
+    
+    current_ticket_count = 0;
+
+    for(p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE){
+        current_ticket_count += p->tickets;
+        
+        // Did we find the winner?
+        if(current_ticket_count > winner_ticket){
+          // Run the process
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+          c->proc = 0;
+          
+          release(&p->lock);
+          // Important: We found our winner for this time slice. 
+          // Break to restart the lottery for the next slice.
+          break; 
+        }
+      }
+      release(&p->lock);
+    }
+  }
+}
+
+
+/* void
+scheduler(void)
+{
   struct proc *p;
   struct cpu *c = mycpu();
 
@@ -460,7 +536,7 @@ scheduler(void)
       asm volatile("wfi");
     }
   }
-}
+} */
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
