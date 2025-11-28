@@ -2,7 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define NUM_PROCS 150
+#define NUM_PROCS 50
 
 int main(int argc, char *argv) {
   int pid;
