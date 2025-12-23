@@ -24,7 +24,7 @@ int getpid(void);
 char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
-int settickets(int);    // CODE MODIFICATION 7
+int settickets(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

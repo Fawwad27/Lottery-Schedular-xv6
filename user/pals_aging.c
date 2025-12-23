@@ -1,0 +1,78 @@
+#include "kernel/types.h"
+#include "kernel/stat.h"
+#include "user/user.h"
+
+// PALS Aging Test: Tests starvation prevention via ticket aging
+// One dominant process with many tickets vs multiple low-ticket processes
+
+#define NUM_LOW_TICKET_PROCS 5
+#define WORK_ITERATIONS 500000000 // Increased from 50M to 500M
+
+int main(int argc, char *argv[]) {
+  int pids[NUM_LOW_TICKET_PROCS + 1];
+  int start_time, end_time;
+
+  printf("=== PALS AGING / STARVATION TEST ===\n");
+  printf("Testing aging mechanism to prevent starvation\n");
+  printf("1 dominant process (200 tickets) vs %d low-priority processes (1 "
+         "ticket each)\n\n",
+         NUM_LOW_TICKET_PROCS);
+
+  start_time = uptime();
+
+  // Create dominant process with 200 tickets
+  pids[0] = fork();
+  if (pids[0] == 0) {
+    if (settickets(200) < 0) {
+      printf("FAILED: settickets(200) returned error\n");
+      exit(1);
+    }
+
+    int proc_start = uptime();
+    long i;
+    for (i = 0; i < WORK_ITERATIONS; i++)
+      ;
+    int proc_end = uptime();
+
+    printf("[DOMINANT 200 tickets] Finished at time %d (duration: %d ticks)\n",
+           proc_end, proc_end - proc_start);
+    exit(0);
+  }
+
+  // Create low-ticket processes (1 ticket each)
+  for (int p = 0; p < NUM_LOW_TICKET_PROCS; p++) {
+    pids[p + 1] = fork();
+    if (pids[p + 1] == 0) {
+      if (settickets(1) < 0) {
+        printf("FAILED: settickets(1) returned error\n");
+        exit(1);
+      }
+
+      int proc_start = uptime();
+      long i;
+      for (i = 0; i < WORK_ITERATIONS; i++)
+        ;
+      int proc_end = uptime();
+
+      printf("[LOW-PRIORITY %d, 1 ticket] Finished at time %d (duration: %d "
+             "ticks)\n",
+             p, proc_end, proc_end - proc_start);
+      exit(0);
+    }
+  }
+
+  // Parent waits for all children
+  for (int p = 0; p <= NUM_LOW_TICKET_PROCS; p++) {
+    wait(0);
+  }
+
+  end_time = uptime();
+
+  printf("\n=== TEST COMPLETE ===\n");
+  printf("Total test duration: %d ticks\n", end_time - start_time);
+  printf("\nWith PALS: Low-ticket processes should complete in bounded time "
+         "(aging prevents starvation)\n");
+  printf("Without PALS: Low-ticket processes may experience very long waits\n");
+
+  exit(0);
+}

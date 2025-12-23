@@ -1,0 +1,110 @@
+================================================================================
+                    SIMPLE STEP-BY-STEP TESTING GUIDE
+                    What to Do Right Now
+================================================================================
+
+YOU HAVE XV6 RUNNING! Here's exactly what to do:
+
+================================================================================
+STEP 1: Test in Your Current xv6 Window
+================================================================================
+
+In the xv6 terminal that's already running, type these commands:
+
+1. Type: pals_int
+   Press ENTER
+   WAIT for it to finish (will take 30-60 seconds with new workload)
+   
+2. Type: pals_aging  
+   Press ENTER
+   WAIT for it to finish (will take 1-2 minutes)
+   
+3. Type: pals_cmp
+   Press ENTER
+   WAIT for it to finish (will take 1-2 minutes)
+
+4. Exit xv6:
+   Press: Ctrl-A
+   Then press: x
+
+COPY ALL THE OUTPUT - you'll need it for comparison!
+
+================================================================================
+STEP 2: Build PALS Version
+================================================================================
+
+In your terminal (after exiting xv6):
+
+$ make clean
+$ CFLAGS=-DPALS make
+$ make qemu
+
+Wait for xv6 to boot...
+
+================================================================================
+STEP 3: Run Same Tests with PALS
+================================================================================
+
+In the new xv6 window, run THE SAME commands:
+
+$ pals_int
+$ pals_aging
+$ pals_cmp
+
+Exit: Ctrl-A then x
+
+COPY THIS OUTPUT TOO!
+
+================================================================================
+STEP 4: What to Compare
+================================================================================
+
+Compare these metrics between baseline and PALS:
+
+From pals_int:
+--------------
+Baseline: Look at "wakeup-to-work latency" values
+PALS:     Should show LOWER latency values
+
+Example:
+  Baseline: latency 5, 12, 8, 15, 20 ticks (high variance)
+  PALS:     latency 3, 4, 5, 4, 6 ticks (low variance)
+
+
+From pals_aging:
+----------------
+Baseline: Look at when LOW-PRIORITY processes finish
+PALS:     Should finish SOONER (less starvation)
+
+Example:
+  Baseline: Dominant finishes at 500, Low-priority at 8000 (16x slower)
+  PALS:     Dominant finishes at 500, Low-priority at 3000 (6x slower)
+
+
+From pals_cmp:
+--------------
+Baseline: Look at "Avg wakeup latency" for I/O-BOUND processes
+PALS:     Should show LOWER average latency
+
+Example:
+  Baseline: Avg wakeup latency 15 ticks
+  PALS:     Avg wakeup latency 8 ticks
+
+================================================================================
+QUICK SUMMARY
+================================================================================
+
+1. ✓ You already have xv6 running (baseline)
+2. Run: pals_int, pals_aging, pals_cmp
+3. Save the output
+4. Exit (Ctrl-A then x)
+5. Build PALS: make clean && CFLAGS=-DPALS make && make qemu
+6. Run same 3 tests
+7. Compare the numbers!
+
+PALS should show:
+  ✓ Lower wakeup latency
+  ✓ Less starvation (bounded wait times)
+  ✓ Better I/O responsiveness
+
+================================================================================
